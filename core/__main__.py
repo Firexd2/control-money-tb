@@ -3,7 +3,7 @@ from aiogram.utils import executor
 
 from core import dp, db
 from core.cache import user_cache
-from core.process import process, start_game
+from core.process import process, start_game, inline
 
 
 @dp.message_handler(commands="drop")
@@ -16,6 +16,14 @@ async def drop_handler(message: types.Message):
 @dp.message_handler(commands="start")
 async def start_handler(message: types.Message):
     await start_game(dict(message.from_user))
+
+
+@dp.callback_query_handler()
+async def inline_callback_handler(query: types.CallbackQuery):
+    answer_data = query.data
+    user_id = query.from_user.id
+    resp = await inline(user_id, answer_data)
+    await query.answer(resp)
 
 
 @dp.message_handler()

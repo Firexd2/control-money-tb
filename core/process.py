@@ -1,4 +1,5 @@
 from core.convs import its_start_conv
+from core.texts import TXT, CMND
 from core.utils.decorators import exceptions_catcher
 from core.utils.messages import send_text
 from core.objects import User
@@ -9,12 +10,11 @@ async def start_game(data):
         del data["is_bot"]
         if "language_code" in data:
             del data["language_code"]
-        await User.create(data)
-        user = await User.get(id=data["id"])
+        user = await User.create(data)
 
-        text, commands = "create user", user.get_commands()
+        text, commands = "Ты зареган", user.get_commands()
     else:
-        text, commands = "test", user.get_commands()
+        text, commands = "зачем тебе start?", user.get_commands()
 
     await send_text(user, text, commands)
 
@@ -27,3 +27,21 @@ async def process(user_id: int, message: str):
         await user.conv_exec(message)
     elif (conv := its_start_conv(user, message)):
         await user.conv_start(conv)
+    else:
+        await user.process(message)
+
+
+@exceptions_catcher()
+async def inline(user_id: int, message: str):
+    user = await User.get(id=user_id)
+    resp = TXT.ok
+
+    if CMND.append_tag in message:
+        tag = message.split(CMND.inline_separator)[-1]
+        if tag not in user._conv._tags:
+            user._conv._tags.append(tag)
+
+        selected_tags = ",".join(user._conv._tags)
+        await send_text(user, f"{TXT.selected_tags}\n{selected_tags}")
+
+    return resp

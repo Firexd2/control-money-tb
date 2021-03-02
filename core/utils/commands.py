@@ -3,6 +3,18 @@ from typing import Optional, Union
 from core.enums import ButtonsTypes
 
 
+def split_list_into_sm_lists(commands, len_sm_list):
+    result = []
+    for n, command in enumerate(commands):
+        row = n // len_sm_list
+        if len(result) != row + 1:
+            result.append([])
+
+        result[-1].append(command)
+
+    return result
+
+
 class c:
 
     def __init__(self, *commands, type: Optional[ButtonsTypes] = ButtonsTypes.keyboard):
@@ -46,3 +58,10 @@ class c:
             self._commands.extend(other._commands)
 
         return self
+
+    def __len__(self):
+        result = 0
+        for gr in self._commands:
+            result += len(gr)
+
+        return result

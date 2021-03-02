@@ -77,6 +77,8 @@ class Conv:
     """
     command = None
 
+    dont_check_input_in_state = []
+
     @classmethod
     def this_is(cls, user, command):
         return command == cls.command
@@ -115,7 +117,7 @@ class Conv:
         if its_start:
             success, text, commands, *end = await self._state_0()
         else:
-            if command not in self._commands[-1]:
+            if self._state + 1 not in self.dont_check_input_in_state and command not in self._commands[-1]:
                 return TXT.unknown, None
 
             success, text, commands, *end = await getattr(self, f"_state_{str(self._state + 1)}")(command)

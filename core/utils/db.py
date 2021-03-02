@@ -43,6 +43,18 @@ class StrField(Field):
         return value
 
 
+class ListField(Field):
+
+    def deserialize(self, value, parent):
+        if value is not None:
+            return list(value)
+        else:
+            return self.get_default()
+
+    def serialize(self, value):
+        return value
+
+
 class OneOfManyField(Field):
 
     def __init__(self, objects, *args, **kwargs):
@@ -242,7 +254,9 @@ class Database(Model):
 
     @classmethod
     async def create(cls, data):
-        await cls.get_collection().insert_one(data)
+        _id = (await cls.get_collection().insert_one(data)).inserted_id
+
+        return await cls.get(_id=_id)
 
     async def save(self) -> None:
         await self.get_collection().update_one({"_id": self._id}, {'$set': self._get_columns()})
