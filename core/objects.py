@@ -1,17 +1,66 @@
-from typing import Optional, Union
-
+from typing import Optional, Union, List
+import datetime
 from core.cache import user_cache
 from core.texts import BTN, TXT
 from core.utils.commands import c
 from core.utils.common import ConvType
-from core.utils.db import Database, Field, IntField, StrField, ManyOfOneField, Model, ListField
+from core.utils.db import Database, Field, IntField, StrField, ListField
 from core.utils.messages import send_text
 
 
-class ExpenseRecord(Model):
+class ExpenseRecord(Database):
+    _id = Field()
     tags = ListField(default=list)
+    parent_id = Field()
     value = IntField()
     comment = StrField()
+    datetime = Field()
+
+    def __str__(self):
+        return f"""
+⏱ <b>{self.datetime.strftime("%H:%M:%S %d.%m.%Y")}</b>
+🔖 <i>{', '.join(self.tags)}</i>
+ℹ️ {self.value} р.
+💬 {self.comment}
+"""
+
+
+class Plan(Database):
+    _id = Field()
+
+    title = StrField()
+
+    money = IntField(default=0)
+
+    start_date = Field(default=None)
+    start_money = IntField(default=0)
+
+    def __str__(self):
+        return f"""
+🔹 {self.title}
+🕐 {self.start_date.strftime("%d.%m.%Y")}
+💰 {self.money} / {self.start_money}
+💸 {int((self.start_money - self.money) / ((datetime.datetime.now() - self.start_date).days + 1))} в день
+"""
+
+    async def get_commands(self):
+        commands = c()
+        commands += BTN.make_payment,
+        commands += (BTN.about_plan, BTN.leave_plan)
+
+        return commands
+
+    async def get_expense_records(self) -> List[ExpenseRecord]:
+        return await ExpenseRecord.filter({"parent_id": self._id})
+
+    async def process(self, user, command):
+        if command == BTN.leave_plan:
+            project = await user.get_current_project()
+            project.current_plan_id = None
+            await project.save()
+            await send_text(user, TXT.leave_project, await user.get_commands())
+        else:
+            await send_text(user, TXT.unknown, await self.get_commands())
 
 
 class Project(Database):
@@ -19,50 +68,76 @@ class Project(Database):
 
     title = StrField()
 
-    free_money = IntField(default=0)
-    expense_records = ManyOfOneField(ExpenseRecord, default=list)
+    tags_used = ListField(default=list)
 
-    def get_commands(self):
-        commands = c()
-        commands += BTN.withdraw_money,
-        commands += ("Выбрать план", "Создать план")
-        commands += (BTN.about_project, BTN.leave_project)
+    money = IntField(default=0)
 
-        return commands
+    plans_ids = ListField(default=list)
+    current_plan_id = Field(default=None)
 
-    async def process(self, command):
-        if command == BTN.leave_project:
-            user = self._parent
-            user.current_project = None
-            await user.save()
+    async def get_commands(self):
+        if not self.current_plan_id:
+            commands = c()
+            commands += (BTN.select_plan, BTN.create_plan)
+            commands += (BTN.withdraw_money, BTN.about_project, BTN.leave_project)
 
-            await send_text(user, TXT.leave_project, user.get_commands())
+            return commands
         else:
-            await send_text(self._parent, TXT.unknown, self.get_commands())
+            plan = await self.get_current_plan()
+
+            return await plan.get_commands()
+
+    async def get_plans(self) -> List[Plan]:
+        return await Plan.filter({"_id": {"$in": self.plans_ids}})
+
+    async def get_current_plan(self) -> Union[Plan, None]:
+        for p in await self.get_plans():
+            if p._id == self.current_plan_id:
+                return p
+
+        raise Exception(TXT.have_no_projects)
+
+    async def get_expense_records(self) -> List[ExpenseRecord]:
+        return await ExpenseRecord.filter({"parent_id": self._id})
+
+    async def process(self, user, command):
+        if self.current_plan_id:
+            plan = await self.get_current_plan()
+            await plan.process(user, command)
+
+        elif command == BTN.leave_project:
+            user.current_project_id = None
+            await user.save()
+            await send_text(user, TXT.leave_project, await user.get_commands())
+
+        else:
+            await send_text(user, TXT.unknown, await self.get_commands())
 
 
 class User(Database):
     _id = Field()
     id = IntField()
-    projects = ManyOfOneField(Project, default=list)
-    current_project = StrField(default=None)
-    tags_used = ListField(default=list)
+    projects_ids = ListField(default=list)
+    current_project_id = Field(default=None)
 
     _conv: Optional[ConvType] = None
 
     cache_objects = {"search_by": "id", "object": user_cache}
 
-    def get_commands(self):
-        if self.current_project is None:
+    async def get_commands(self):
+        if self.current_project_id is None:
             return c(BTN.select_project, BTN.create_project)
         else:
-            project = self.get_current_project()
+            project = await self.get_current_project()
 
-            return project.get_commands()
+            return await project.get_commands()
 
-    def get_current_project(self) -> Union[Project, None]:
-        for p in self.projects:
-            if str(p._id) == self.current_project:
+    async def get_projects(self) -> List[Project]:
+        return await Project.filter({"_id": {"$in": self.projects_ids}})
+
+    async def get_current_project(self) -> Union[Project, None]:
+        for p in await self.get_projects():
+            if p._id == self.current_project_id:
                 return p
 
         raise Exception(TXT.have_no_projects)
@@ -78,8 +153,8 @@ class User(Database):
             await send_text(self, text, command)
 
     async def process(self, command):
-        if self.current_project:
-            project = self.get_current_project()
-            await project.process(command)
+        if self.current_project_id:
+            project = await self.get_current_project()
+            await project.process(self, command)
         else:
-            await send_text(self, TXT.unknown, self.get_commands())
+            await send_text(self, TXT.unknown, await self.get_commands())

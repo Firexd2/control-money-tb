@@ -47,7 +47,7 @@ class c:
             raise StopIteration
 
     def __bool__(self):
-        return bool(self._commands)
+        return bool(any(self._commands))
 
     def __add__(self, other: Union[tuple, "c", str]):
         if type(other) in (tuple, list):

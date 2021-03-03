@@ -7,6 +7,13 @@ class BTN:
     about_project = "О проекте"
     complete_select_tags = "Завершить выбор меток"
     no_comments = "Без комментария"
+    create_plan = "Создать план"
+    select_plan = "Войти в план"
+    leave_plan = "Выйти из плана"
+    make_payment = "Внести трату"
+    about_plan = "О плане"
+    new_period = "Новый период"
+    all_expense_records = "Все траты"
 
 
 class TXT:
@@ -15,7 +22,7 @@ class TXT:
     you_have_leaved_conv = "Вы вышли из беседы"
     ok = "✅"
     only_digits = "Только цифры"
-    create_project_name_question = "Название?"
+    create_name_question = "Название?"
     what_project = "Какой проект?"
     recently_used_tags = "Ранее введенные метки"
     select_tags_or_type_new = "Выберите метки или введите новую"
@@ -23,6 +30,8 @@ class TXT:
     what_comment = "Комментарий?"
     leave_project = "Ты вышел из проекта"
     have_no_projects = "У вас нет проектов"
+    have_no_plans = "У вас нет планов"
+    what_value_for_new_plan = "C какой суммой начинаем период?"
 
 
 class CMND:

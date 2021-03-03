@@ -68,8 +68,6 @@ def get_buttons(commands):
     return commands_kw
 
 
-
-
 class Conv:
     """
     Каждый _state_* должен содержать в return три обязательных аргумента (успешность, текст, команды),
@@ -77,10 +75,13 @@ class Conv:
     """
     command = None
 
+    async def get_exit_text(self):
+        return None
+
     dont_check_input_in_state = []
 
     @classmethod
-    def this_is(cls, user, command):
+    async def this_is(cls, user, command):
         return command == cls.command
 
     def __init__(self, user):
@@ -123,7 +124,7 @@ class Conv:
             success, text, commands, *end = await getattr(self, f"_state_{str(self._state + 1)}")(command)
 
         if commands is False:
-            commands = self.user.get_commands()
+            commands = await self.user.get_commands()
 
         if success and not its_start:
             self._selected_commands.append(command)
@@ -145,7 +146,7 @@ class Conv:
         if self._state < 0:
             self.user._conv = None
 
-            return TXT.you_have_leaved_conv, self.user.get_commands()
+            return await self.get_exit_text() or TXT.you_have_leaved_conv, await self.user.get_commands()
 
         del self._last_ctxs[-1:-3:-1]
         del self._selected_commands[-1]
