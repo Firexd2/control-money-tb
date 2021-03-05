@@ -17,6 +17,11 @@ class TelegramProxy():
         else:
             await bot.send_message(chat_id, text, **commands_kw, parse_mode=ParseMode.HTML)
 
+    async def edit_text(self, chat_id: int, text: str, message_id: int, commands: Any):
+        commands_kw = get_buttons(commands)
+
+        await bot.edit_message_text(text, chat_id, **commands_kw, parse_mode=ParseMode.HTML, message_id=message_id)
+
     async def send_image(self, chat_id: int, image: bytes, text: str, commands: Any):
         commands_kw = get_buttons(commands)
 

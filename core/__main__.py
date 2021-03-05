@@ -20,9 +20,7 @@ async def start_handler(message: types.Message):
 
 @dp.callback_query_handler()
 async def inline_callback_handler(query: types.CallbackQuery):
-    answer_data = query.data
-    user_id = query.from_user.id
-    resp = await inline(user_id, answer_data)
+    resp = await inline(query.from_user.id, query)
     await query.answer(resp)
 
 

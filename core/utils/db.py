@@ -7,7 +7,10 @@ class Field:
         self.default = kwargs.get("default")
 
     def deserialize(self, value, parent):
-        return value
+        if value is not None:
+            return value
+        else:
+            return self.get_default()
 
     def serialize(self, value):
         return value

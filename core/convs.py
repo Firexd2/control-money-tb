@@ -3,14 +3,12 @@ import datetime
 import pytz
 
 from core.enums import ButtonsTypes
-from core.objects import Project, ExpenseRecord, Plan
+from core.objects import Project, ExpenseRecord, Plan, User
 from core.texts import BTN, TXT, CMND
 from core.utils.commands import split_list_into_sm_lists, c
 from core.utils.common import Conv
 from core.utils.messages import send_text
-
-
-moscowtz = pytz.timezone('Europe/Moscow')
+from core.utils.pagination import send_text_with_pagination
 
 
 async def its_start_conv(user, command):
@@ -60,10 +58,42 @@ class SelectProject(Conv):
                 return True, TXT.ok, False, True
 
 
+class MakeIncome(Conv):
+
+    command = BTN.make_income
+
+    dont_check_input_in_state = [1]
+
+    @classmethod
+    async def this_is(cls, user, command):
+        return await user.get_current_project() and command == cls.command
+
+    async def _state_0(self, *args):
+        return True, TXT.what_amount, self._get_commands()
+
+    async def _state_1(self, value):
+        try:
+            value = int(value)
+        except ValueError:
+            return False, TXT.only_digits, None
+
+        project = await self.user.get_current_project()
+        project.money += value
+
+        await project.save()
+
+        return True, TXT.ok, False, True
+
+
 class MakePaymentBase(Conv):
 
     async def get_object(self):
         raise NotImplementedError()
+
+    async def get_users(self):
+        project = await self.user.get_current_project()
+
+        return await User.filter({"projects_ids": {"$all": [project._id]}})
 
     dont_check_input_in_state = [1, 2, 3]
 
@@ -86,6 +116,11 @@ class MakePaymentBase(Conv):
         if recently_tags:
             await send_text(self.user, TXT.recently_used_tags, recently_tags)
 
+    def get_text_selected_tags(self) -> str:
+        selected_tags = ", ".join(self._tags)
+
+        return f"🔖 <b>{TXT.selected_tags}</b>\n<i>{selected_tags}</i>"
+
     async def _state_0(self, *args):
         self._tags = []
 
@@ -96,15 +131,17 @@ class MakePaymentBase(Conv):
     async def _state_1(self, command):
 
         if command == BTN.complete_select_tags:
-            return True, "Цена?", self._get_commands()
+            if not self._tags:
+                return False, TXT.you_have_no_tags, None
+
+            return True, TXT.what_value, self._get_commands()
         else:
             if command not in self._tags:
                 self._tags.append(command)
 
             await self.send_recently_tags()
 
-            selected_tags = ",".join(self._tags)
-            return False, f"{TXT.selected_tags}\n{selected_tags}", None
+            return False, self.get_text_selected_tags(), None
 
     async def _state_2(self, value):
         try:
@@ -138,6 +175,11 @@ class MakePaymentBase(Conv):
 
         await project.save()
 
+        users = await self.get_users()
+        for user in users:
+            if user.id != self.user.id:
+                await send_text(user, f"<b>{user.first_name or user.id}</b> внёс трату в <b>{object.title}</b>\n💰{value}\n💬{comment}")
+
         return True, TXT.ok, False, True
 
 
@@ -169,16 +211,22 @@ class AboutProject(Conv):
 
     async def _state_0(self, *args):
         project = await self.user.get_current_project()
-        records = await project.get_expense_records()
-        last_records = '\n\n'.join([f"{r.datetime.isoformat()}\n<i>{', '.join(r.tags)}</i>\n{r.comment}\n{r.value} р." for r in records])
-        text = f"""
-Свободные деньги <b>{project.money}</b>
 
-Последние траты:
-{last_records}
-"""
+        return True, await project.get_str(), self._get_commands(BTN.all_expense_records)
 
-        return True, text, False, True
+    async def _state_1(self, command):
+        if command == BTN.all_expense_records:
+
+            project = await self.user.get_current_project()
+            objects = await project.get_expense_records()
+            texts = [str(o) for o in objects]
+
+            await send_text_with_pagination(
+                self.user, texts, CMND.pagination_expense_for_project,
+                len_page=10, current_number=len(texts) // 10
+            )
+
+            return False, None, None
 
 
 class CreatePlan(Conv):
@@ -253,9 +301,17 @@ class AboutPlan(Conv):
     async def _state_1(self, command):
         if command == BTN.all_expense_records:
             project = await self.user.get_current_project()
-            plan = await project.get_current_plan()
+            plans = await project.get_current_plan()
+            objects = await plans.get_expense_records()
+            texts = [str(o) for o in objects]
 
-            return False, "".join([str(r) for r in await plan.get_expense_records()]) or "Трат нет", None
+            await send_text_with_pagination(
+                self.user, texts, CMND.pagination_expense_for_plan,
+                len_page=10, current_number=len(texts) // 10
+            )
+
+            return False, None, None
+
         elif command == BTN.new_period:
             return True, TXT.what_value_for_new_plan, self._get_commands()
 
@@ -287,4 +343,4 @@ class AboutPlan(Conv):
 
 
 registered_convs = [CreateProject, SelectProject, WithdrawMoney, AboutProject, CreatePlan, SelectPlan,
-                    AboutPlan, MakePayment]
+                    AboutPlan, MakePayment, MakeIncome]
