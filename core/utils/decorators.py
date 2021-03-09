@@ -15,7 +15,7 @@ def exceptions_catcher():
                 except Exception as e:
                     user = await User.get(id=user_id)
                     print(traceback.print_exc())
-                    await send_text(user, TXT.failure)
+                    await send_text(user, traceback.format_exc())
 
         return wrapped
 

@@ -1,6 +1,7 @@
 import argparse
 import os
 import pathlib
+import sys
 from typing import Any
 from typing import Optional, TypeVar, List
 
@@ -29,7 +30,15 @@ CONFIG_TRAFARET = trafaret.Dict({
         }),
     trafaret.Key('mongo'):
         trafaret.Dict({
-            'host': trafaret.String()
+            'host': trafaret.String(),
+            'name': trafaret.String()
+        }),
+    trafaret.Key('webhook'):
+        trafaret.Dict({
+            'host': trafaret.String(),
+            'path': trafaret.String(),
+            'app_host': trafaret.String(),
+            'app_port': trafaret.Int(),
         }),
 })
 
@@ -161,6 +170,16 @@ class Conv:
 
     async def _state_0(self, *args):
         raise NotImplementedError
+
+
+def get_kwargv(name):
+    for argv in sys.argv:
+        try:
+            k, v = argv.split('=')
+            if k == name:
+                return v
+        except ValueError:
+            pass
 
 
 ConvType = TypeVar('ConvType', bound=Conv)
