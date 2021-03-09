@@ -178,7 +178,7 @@ class MakePaymentBase(Conv):
         users = await self.get_users()
         for user in users:
             if user.id != self.user.id:
-                await send_text(user, f"<b>{user.first_name or user.id}</b> внёс трату в <b>{object.title}</b>\n💰{value}\n💬{comment}")
+                await send_text(user, f"<b>{self.user.first_name or self.user.id}</b> внёс трату в <b>{object.title}</b>\n💰{value}\n💬{comment}")
 
         return True, TXT.ok, False, True
 
