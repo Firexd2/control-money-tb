@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         executor.start_webhook(
             dispatcher=dp,
-            webhook_path=config['webhook']['path'],
+            webhook_path='/',
             on_startup=on_startup,
             on_shutdown=on_shutdown,
             skip_updates=True,
