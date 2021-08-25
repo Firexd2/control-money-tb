@@ -28,11 +28,6 @@ CONFIG_TRAFARET = trafaret.Dict({
             'username': trafaret.String(),
             'password': trafaret.String()
         }),
-    trafaret.Key('mongo'):
-        trafaret.Dict({
-            'host': trafaret.String(),
-            'name': trafaret.String()
-        }),
     trafaret.Key('webhook'):
         trafaret.Dict({
             'host': trafaret.String(),
