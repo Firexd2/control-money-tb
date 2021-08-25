@@ -15,7 +15,7 @@ def init() -> tuple:
 
     bot = Bot(token=config['token'])
     dp = Dispatcher(bot)
-    client = motor.motor_asyncio.AsyncIOMotorClient(host=os.getenv("MONGODB_HOST"))
+    client = motor.motor_asyncio.AsyncIOMotorClient(host=os.getenv("MONGODB_HOST"))["control-money"]
     db = client[config["mongo"]["name"]]
 
     return bot, dp, db, config
